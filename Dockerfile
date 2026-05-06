@@ -1,25 +1,31 @@
-FROM php:8.2-fpm
+FROM php:8.2-apache
 
 RUN apt-get update && apt-get install -y \
     git curl zip unzip libpng-dev libonig-dev \
-    libxml2-dev libzip-dev nodejs npm \
+    libxml2-dev libzip-dev \
     && docker-php-ext-install pdo_mysql mbstring zip exif pcntl bcmath gd \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-WORKDIR /var/www
+# Apache mod_rewrite қосу (Laravel үшін керек)
+RUN a2enmod rewrite
+
+WORKDIR /var/www/html
 
 COPY composer.json composer.lock ./
 RUN composer install --no-scripts --no-autoloader --prefer-dist
 
 COPY . .
 
-# --no-scripts флагы: artisan package:discover іске қоспайды (DB жоқ кезде)
 RUN composer dump-autoload --optimize --no-scripts
 
-RUN chown -R www-data:www-data /var/www \
-    && chmod -R 775 /var/www/storage /var/www/bootstrap/cache
+# Apache public/ папкасынан оқисын
+RUN sed -i 's|/var/www/html|/var/www/html/public|g' /etc/apache2/sites-available/000-default.conf
 
-EXPOSE 9000
-CMD ["php-fpm"]
+RUN chown -R www-data:www-data /var/www/html \
+    && chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
+
+EXPOSE 80
+
+CMD ["apache2-foreground"]
