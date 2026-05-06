@@ -15,7 +15,8 @@ RUN composer install --no-scripts --no-autoloader --prefer-dist
 
 COPY . .
 
-RUN composer dump-autoload --optimize
+# --no-scripts флагы: artisan package:discover іске қоспайды (DB жоқ кезде)
+RUN composer dump-autoload --optimize --no-scripts
 
 RUN chown -R www-data:www-data /var/www \
     && chmod -R 775 /var/www/storage /var/www/bootstrap/cache
